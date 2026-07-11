@@ -11,6 +11,13 @@ from zoneinfo import ZoneInfo
 # --- Swap gym here (address is used only for the "Open in Google Maps" link) ---
 GYM_ADDRESS = "Fitness24Seven, Calle 24, Av. La Esperanza #43 A 90, Teusaquillo, Bogota"
 GYM_NAME = "Fitness24Seven Quinta Paredes"
+
+# --- Live data (optional): scrape Google's Popular Times via your real Chrome. ---
+# When True, fetcher tries the live scrape first and falls back to WEEKLY_CURVE if it
+# fails. Needs Google Chrome installed + a one-time login (see scrape/README.md).
+# GYM_SEARCH_QUERY is what gets typed into Google — the name Google knows the gym by.
+USE_LIVE_SCRAPE = True
+GYM_SEARCH_QUERY = "Fitness24Seven Quinta Paredes Bogota"
 # quote_plus so special chars (e.g. the '#' in the address) don't break the URL.
 MAPS_URL = "https://www.google.com/maps/search/?api=1&query=" + quote_plus(GYM_ADDRESS)
 

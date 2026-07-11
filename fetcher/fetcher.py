@@ -19,21 +19,53 @@ def _stamp() -> str:
     return datetime.now(config.TZ).isoformat(timespec="seconds")
 
 
-def fetch() -> dict:
-    """Build a full payload from the forecast. Never raises — failures come back soft."""
+def _week_from_forecast() -> list[dict]:
+    week = [
+        {"name": day, "data": config.WEEKLY_CURVE[day]}
+        for day in ("Monday", "Tuesday", "Wednesday", "Thursday",
+                    "Friday", "Saturday", "Sunday")
+    ]
+    for entry in week:  # guard against a hand-edited malformed curve
+        if len(entry["data"]) != 24:
+            raise ValueError(f"WEEKLY_CURVE['{entry['name']}'] must have 24 hourly values")
+    return week
+
+
+def _try_live(now: datetime) -> dict | None:
+    """Best-effort live scrape via real Chrome. Returns a payload or None (fall back)."""
+    if not getattr(config, "USE_LIVE_SCRAPE", False):
+        return None
     try:
-        populartimes = [
-            {"name": day, "data": config.WEEKLY_CURVE[day]}
-            for day in (
-                "Monday", "Tuesday", "Wednesday", "Thursday",
-                "Friday", "Saturday", "Sunday",
-            )
-        ]
-        for entry in populartimes:  # guard against a hand-edited malformed curve
-            if len(entry["data"]) != 24:
-                raise ValueError(f"WEEKLY_CURVE['{entry['name']}'] must have 24 hourly values")
+        from scrape.live import scrape_live
+    except Exception:
+        return None
+    r = scrape_live(config.GYM_SEARCH_QUERY, config.TZ)
+    if not r.get("ok") or not r.get("today"):
+        return None
+    today_name = now.strftime("%A")
+    # today's curve comes from Google; other days keep the forecast for the week view
+    week = _week_from_forecast()
+    for d in week:
+        if d["name"] == today_name:
+            d["data"] = r["today"]
+    payload = build_payload(week, live=r.get("live"), now=now)
+    payload["source"] = "live"
+    if r.get("verdict"):
+        payload["verdict"] = r["verdict"]
+    payload.update(fetched_at=now.isoformat(timespec="seconds"),
+                   maps_url=config.MAPS_URL, ok=True, error=None)
+    return payload
+
+
+def fetch() -> dict:
+    """Build a full payload. Try the live Google scrape, else the forecast curve.
+    Never raises — any failure comes back soft (ok=False) or falls back to forecast."""
+    try:
         now = datetime.now(config.TZ)  # one clock read for both fetched_at and the hour
-        payload = build_payload(populartimes, live=None, now=now)
+        live_payload = _try_live(now)
+        if live_payload is not None:
+            return live_payload
+        payload = build_payload(_week_from_forecast(), live=None, now=now)
         payload.update(
             fetched_at=now.isoformat(timespec="seconds"),
             maps_url=config.MAPS_URL,  # so the gym-specific Maps link swaps with config

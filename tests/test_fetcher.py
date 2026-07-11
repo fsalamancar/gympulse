@@ -1,7 +1,15 @@
 # tests/test_fetcher.py
 import json
 
+import pytest
+
 from fetcher import fetcher
+
+
+@pytest.fixture(autouse=True)
+def _no_live(monkeypatch):
+    """Forecast tests must not launch Chrome; disable the live scrape by default."""
+    monkeypatch.setattr(fetcher.config, "USE_LIVE_SCRAPE", False)
 
 
 def test_write_json_atomic_and_readable(tmp_path, monkeypatch):
@@ -40,6 +48,35 @@ def test_fetch_success_from_forecast(monkeypatch):
     assert payload["level"] == "quiet"   # forecast value 10 -> quiet (green)
     assert len(payload["today"]) == 24
     assert payload["maps_url"] == fetcher.config.MAPS_URL  # gym-specific link travels in JSON
+
+
+def test_fetch_prefers_live_when_available(monkeypatch):
+    # When the live scrape succeeds, the payload is source=live with the scraped
+    # curve + live value; no Chrome is launched here (scrape_live is stubbed).
+    monkeypatch.setattr(fetcher.config, "USE_LIVE_SCRAPE", True)
+    fake_today = [10] * 24
+    fake_today[18] = 80
+    def fake_scrape(query, tz):
+        return {"ok": True, "today": fake_today, "live": 80, "verdict": "busier"}
+    monkeypatch.setattr(fetcher, "_try_live", fetcher._try_live)  # keep real wrapper
+    import scrape.live as live_mod
+    monkeypatch.setattr(live_mod, "scrape_live", fake_scrape)
+    payload = fetcher.fetch()
+    assert payload["ok"] is True
+    assert payload["source"] == "live"
+    assert payload["live"] == 80
+    assert payload["verdict"] == "busier"
+    assert len(payload["today"]) == 24
+
+
+def test_fetch_falls_back_to_forecast_when_live_fails(monkeypatch):
+    monkeypatch.setattr(fetcher.config, "USE_LIVE_SCRAPE", True)
+    import scrape.live as live_mod
+    monkeypatch.setattr(live_mod, "scrape_live",
+                        lambda q, tz: {"ok": False, "error": "captcha"})
+    payload = fetcher.fetch()
+    assert payload["ok"] is True
+    assert payload["source"] == "forecast"   # fell back cleanly
 
 
 def test_append_history(tmp_path, monkeypatch):
