@@ -15,17 +15,17 @@ magick "$SHEET" -crop 3x2@ +repage "$OUT/s_%d.png"
 #     are downscaled. The dumbbell is a transparent OUTLINE that FILLS HORIZONTALLY
 #     from the left in proportion to how busy the gym is (0% = empty outline,
 #     100% = solid) — the original gauge idea. Black + alpha, so macOS renders it as
-#     an adaptive template icon (white on a dark bar, black on light). 32px @144dpi
-#     = 16pt. fill_0..fill_100 = the levels; template_error = cracked outline (s_5).
+#     an adaptive template icon (white on a dark bar, black on light). 40px @144dpi
+#     = 20pt. fill_0..fill_100 = the levels; template_error = cracked outline (s_5).
 TILE="$OUT/s_2.png"                 # busy tile = full symmetric dumbbell shape
 SIL=$(mktemp).png; OUTL=$(mktemp).png
 # silhouette footprint (key only the OUTER white), sized to final 16pt
 magick "$TILE" -alpha set -bordercolor white -border 1 -fuzz 15% -fill none \
   -draw "alpha 0,0 floodfill" -shave 1x1 +repage -alpha extract \
-  -filter Lanczos -resize x32 "$SIL"
+  -filter Lanczos -resize x40 "$SIL"
 # outline (structural lines), slightly thickened so the empty gauge stays visible
 magick "$TILE" -background white -flatten -colorspace Gray -canny 0x1+10%+30% \
-  -morphology Dilate Disk:1.5 -filter Lanczos -resize x32 "$OUTL"
+  -morphology Dilate Disk:1.5 -filter Lanczos -resize x40 "$OUTL"
 GW=$(magick identify -format "%w" "$SIL"); GH=$(magick identify -format "%h" "$SIL")
 LMASK=$(mktemp).png
 for p in 0 10 20 30 40 50 60 70 80 90 100; do
@@ -43,11 +43,11 @@ for p in 0 10 20 30 40 50 60 70 80 90 100; do
     -units PixelsPerInch -density 144 "$OUT/fill_${p}.png"
 done
 rm -f "$SIL" "$OUTL" "$LMASK"
-# Error glyph: cracked dumbbell as a bold outline (from s_5), same 16pt template.
+# Error glyph: cracked dumbbell as a bold outline (from s_5), same 20pt template.
 magick "$OUT/s_5.png" -background white -flatten -colorspace Gray -canny 0x1+10%+30% \
   -morphology Dilate Disk:2 \( +clone \) -alpha off -compose CopyOpacity -composite \
   -channel RGB -evaluate set 0 +channel -trim +repage \
-  -filter Lanczos -resize x32 -units PixelsPerInch -density 144 "$OUT/template_error.png"
+  -filter Lanczos -resize x40 -units PixelsPerInch -density 144 "$OUT/template_error.png"
 
 # 2) Key out the white background to transparency (flood-fill from the corner so
 #    only the OUTER white becomes transparent — white pixels inside a dumbbell,
