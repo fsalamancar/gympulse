@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import base64
 import json
-import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
@@ -18,9 +17,7 @@ REPO = Path(__file__).resolve().parent.parent
 CACHE = HOME / ".gympulse" / "latest.json"
 HISTOGRAM = HOME / ".gympulse" / "histogram.png"
 ICONS = REPO / "assets" / "icons"
-VENV_PY = REPO / ".venv" / "bin" / "python"
 MAPS_FALLBACK = "https://www.google.com/maps"
-STALE_MIN = 10.0          # refresh cache if older than this
 BLOCKS = " ▁▂▃▄▅▆▇█"
 
 def _read_b64(stem: str, icons_dir: Path) -> str:
@@ -108,17 +105,13 @@ def render(payload: dict, icons_dir: Path, cache_age_min: float) -> str:
     return "\n".join(lines)
 
 
-def _load_or_fetch() -> tuple[dict, float]:
+def _load() -> tuple[dict, float]:
+    """Read-only: load the cache the launchd daemon maintains. The plugin NEVER
+    scrapes/launches Chrome itself — that keeps clicking instant and avoids extra
+    Google hits. If the daemon is down, we just show the (stale) cache honestly."""
     age_min = float("inf")
     if CACHE.exists():
         age_min = (time.time() - CACHE.stat().st_mtime) / 60
-    if age_min > STALE_MIN and VENV_PY.exists():
-        try:  # cache missing/stale: refresh once, off the render path's error budget
-            subprocess.run([str(VENV_PY), "-m", "fetcher.fetcher"],
-                           cwd=str(REPO), timeout=30, check=False)
-            age_min = (time.time() - CACHE.stat().st_mtime) / 60
-        except Exception:
-            pass
     try:
         return json.loads(CACHE.read_text()), age_min
     except Exception:
@@ -129,7 +122,7 @@ def _load_or_fetch() -> tuple[dict, float]:
 
 def main() -> None:
     try:
-        payload, age = _load_or_fetch()
+        payload, age = _load()
         print(render(payload, ICONS, age))
     except Exception as e:  # last-resort: never crash the menu bar
         img = _read_b64("template_error", ICONS)  # cracked monochrome glyph, never an emoji
