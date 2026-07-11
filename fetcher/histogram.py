@@ -34,42 +34,55 @@ _TICK = "#b8c2c6"
 _BG = "none"  # transparent
 
 
-def _draw_ops(today: list[int], now_hour: int) -> list[str]:
+def _draw_ops(today: list[int], now_hour: int, live: int | None) -> list[str]:
     plot_w = _W - _PAD_L - _PAD_R
     plot_h = _H - _PAD_T - _PAD_B
     slot = plot_w / 24.0
-    bar_w = slot * 0.66
-    peak = max(today) or 1
+    bar_w = slot * 0.62
     ops: list[str] = []
+    y_base = _PAD_T + plot_h
+
+    def bar(x0: float, w: float, val: int, color: str) -> None:
+        bh = max(2.0, max(0, min(100, val)) / 100 * plot_h)
+        ops.extend(["-fill", color,
+                    "-draw", f"roundrectangle {x0:.1f},{y_base - bh:.1f} "
+                             f"{x0 + w:.1f},{y_base:.1f} 3,3"])
+
     for h in range(24):
-        val = max(0, min(100, today[h]))
-        bh = max(2.0, val / 100 * plot_h)  # min 2px so empty hours still show a nub
-        x0 = _PAD_L + h * slot + (slot - bar_w) / 2
-        x1 = x0 + bar_w
-        y1 = _PAD_T + plot_h
-        y0 = y1 - bh
-        color = _RED if h == now_hour else _TEAL
-        ops += ["-fill", color,
-                "-draw", f"roundrectangle {x0:.1f},{y0:.1f} {x1:.1f},{y1:.1f} 3,3"]
-    # hour ticks at 6a / 12p / 6p / 12a — only if a usable font file exists
+        slot_x = _PAD_L + h * slot
+        if h == now_hour and live is not None:
+            # Two bars like Google: the typical (teal, thinner, left) and the LIVE
+            # red bar (right) so you can see the gym is busier/quieter than usual.
+            half = bar_w * 0.52
+            bar(slot_x + (slot - bar_w) / 2, half, today[h], _TEAL)
+            bar(slot_x + (slot - bar_w) / 2 + half + 1, half, live, _RED)
+        else:
+            bar(slot_x + (slot - bar_w) / 2, bar_w, today[h], _TEAL)
+
+    # Hour labels under the axis (every 3h), only if a usable font file exists.
     font = _font()
     if font:
-        ops += ["-fill", _TICK, "-font", font, "-pointsize", "20"]
-        for h, lab in [(6, "6a"), (12, "12p"), (18, "6p"), (0, "12a")]:
+        ops += ["-fill", _TICK, "-font", font, "-pointsize", "19"]
+        for h in range(0, 24, 3):
+            hr12 = ((h - 1) % 12) + 1
+            lab = f"{hr12}{'a' if h < 12 else 'p'}"
             x = _PAD_L + h * slot + slot / 2
-            ops += ["-draw", f"text {x - 12:.0f},{_H - 6} '{lab}'"]
+            ops += ["-draw", f"text {x - 10:.0f},{_H - 6} '{lab}'"]
     return ops
 
 
-def render(today: list[int], now_hour: int, out_path: Path) -> bool:
-    """Draw the histogram to out_path. Returns True on success, False on any failure."""
+def render(today: list[int], now_hour: int, out_path: Path, live: int | None = None) -> bool:
+    """Draw the histogram to out_path. Returns True on success, False on any failure.
+
+    If `live` is given, the current hour shows two bars (teal typical + red live),
+    mirroring Google's live overlay; otherwise just the teal typical bar."""
     magick = shutil.which("magick")
     if not magick or not today or len(today) < 24:
         return False
     try:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         cmd = [magick, "-size", f"{_W}x{_H}", f"xc:{_BG}",
-               *_draw_ops(today, now_hour),
+               *_draw_ops(today, now_hour, live),
                "-units", "PixelsPerInch", "-density", "144", str(out_path)]
         subprocess.run(cmd, check=True, capture_output=True, timeout=15)
         return True
@@ -80,5 +93,5 @@ def render(today: list[int], now_hour: int, out_path: Path) -> bool:
 if __name__ == "__main__":  # manual probe
     demo = [27, 14, 8, 3, 3, 11, 22, 32, 41, 46, 49, 49, 51, 54, 59, 65,
             81, 95, 100, 97, 92, 76, 59, 43]
-    ok = render(demo, 18, Path.home() / ".gympulse" / "histogram.png")
+    ok = render(demo, 9, Path.home() / ".gympulse" / "histogram.png", live=100)
     print("rendered:", ok)
