@@ -42,3 +42,19 @@ def test_render_nodata_uses_grey_icon_and_no_percent_crash():
     out = plugin.render(_payload(level="nodata", live=None), ICONS, cache_age_min=5.0)
     assert "image=" in out.split("\n---\n")[0]
     assert "~" in out or "no live" in out.lower()   # shows forecast, not a bare None
+
+
+def test_render_no_live_and_no_typical_falls_back_to_gym_title():
+    # Neither a live value nor a forecast for this hour: title is plain "gym",
+    # not a bare "None%" or a crash.
+    out = plugin.render(
+        _payload(level="error", live=None, typical_now=None), ICONS, cache_age_min=5.0
+    )
+    title = out.split("\n---\n")[0]
+    assert "None" not in title
+    assert "gym" in title
+
+
+def test_b64_missing_icon_dir_returns_empty_not_crash():
+    # A bad icons dir must not raise — the last-resort handler depends on this.
+    assert plugin._b64("error", Path("/nonexistent/icons")) == ""

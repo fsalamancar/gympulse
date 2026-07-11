@@ -9,7 +9,6 @@ from __future__ import annotations
 import base64
 import json
 import subprocess
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -28,8 +27,13 @@ _ICON_FOR = {"quiet": "quiet", "moderate": "moderate", "busy": "busy",
 
 
 def _b64(level: str, icons_dir: Path) -> str:
+    """Base64 the state icon. Returns '' on any read problem so no caller —
+    including the last-resort error handler — can be crashed by a bad icon file."""
     p = icons_dir / f"{_ICON_FOR.get(level, 'error')}.png"
-    return base64.b64encode(p.read_bytes()).decode() if p.exists() else ""
+    try:
+        return base64.b64encode(p.read_bytes()).decode()
+    except OSError:
+        return ""
 
 
 def _bar(v: int) -> str:
