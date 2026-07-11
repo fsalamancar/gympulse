@@ -83,7 +83,8 @@ def render(payload: dict, icons_dir: Path, cache_age_min: float) -> str:
     lines.append("---")
 
     # --- Actions ---
-    lines.append(f"Open in Google Maps | href={MAPS_FALLBACK}")
+    maps_url = payload.get("maps_url") or MAPS_FALLBACK  # gym-specific link from config
+    lines.append(f"Open in Google Maps | href={maps_url}")
     lines.append("Refresh now | refresh=true")
     stamp = payload.get("fetched_at", "")[11:16] or "?"
     if cache_age_min >= 60:

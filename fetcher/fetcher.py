@@ -32,8 +32,14 @@ def fetch() -> dict:
         for entry in populartimes:  # guard against a hand-edited malformed curve
             if len(entry["data"]) != 24:
                 raise ValueError(f"WEEKLY_CURVE['{entry['name']}'] must have 24 hourly values")
-        payload = build_payload(populartimes, live=None, now=datetime.now(config.TZ))
-        payload.update(fetched_at=_stamp(), ok=True, error=None)
+        now = datetime.now(config.TZ)  # one clock read for both fetched_at and the hour
+        payload = build_payload(populartimes, live=None, now=now)
+        payload.update(
+            fetched_at=now.isoformat(timespec="seconds"),
+            maps_url=config.MAPS_URL,  # so the gym-specific Maps link swaps with config
+            ok=True,
+            error=None,
+        )
         return payload
     except Exception as e:  # e.g. a malformed WEEKLY_CURVE
         return {
@@ -48,6 +54,7 @@ def fetch() -> dict:
             "best_windows": [],
             "next_quiet": None,
             "week": {},
+            "maps_url": config.MAPS_URL,
             "ok": False,
             "error": str(e),
         }

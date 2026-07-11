@@ -39,6 +39,7 @@ def test_fetch_success_from_forecast(monkeypatch):
     assert payload["source"] == "forecast"
     assert payload["level"] == "quiet"   # forecast value 10 -> quiet (green)
     assert len(payload["today"]) == 24
+    assert payload["maps_url"] == fetcher.config.MAPS_URL  # gym-specific link travels in JSON
 
 
 def test_append_history(tmp_path, monkeypatch):

@@ -22,9 +22,18 @@ def test_compute_verdict():
 
 
 def test_find_best_windows_contiguous_and_open_ended():
-    # quiet (<=33) at hours 10,11,12,13 and 22,23
+    # quiet (<=33) at hours 10-13; hour 22 is quiet and closes the day window (6-22),
+    # so it renders open-ended "22:00+" (hour 23 is outside the window, never read).
     data = [0]*10 + [30, 20, 25, 33] + [50]*8 + [10, 5]
     assert derive.find_best_windows(data) == ["10:00-14:00", "22:00+"]
+
+
+def test_find_best_windows_closes_strictly_within_day():
+    # A quiet run that starts and ENDS inside the day window (no open-ended tail).
+    data = [50]*24
+    for h in (8, 9, 10):
+        data[h] = 20
+    assert derive.find_best_windows(data) == ["08:00-11:00"]
 
 
 def test_find_best_windows_none():
@@ -71,6 +80,7 @@ def test_build_payload_forecast_colors_by_current_hour():
     assert p["typical_now"] == 88
     assert p["level"] == "busy"          # 88 -> busy, colored by forecast
     assert p["delta"] == 0
+    assert p["verdict"] == "usual"       # no live measurement -> neutral, not a false claim
 
 
 def test_build_payload_forecast_quiet_hour_is_green():

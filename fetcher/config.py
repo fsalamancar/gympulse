@@ -5,12 +5,14 @@ Tune busyness by editing WEEKLY_CURVE to match how your gym actually feels.
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import quote_plus
 from zoneinfo import ZoneInfo
 
 # --- Swap gym here (address is used only for the "Open in Google Maps" link) ---
 GYM_ADDRESS = "Fitness24Seven, Calle 24, Av. La Esperanza #43 A 90, Teusaquillo, Bogota"
 GYM_NAME = "Fitness24Seven Quinta Paredes"
-MAPS_URL = "https://www.google.com/maps/search/?api=1&query=" + GYM_ADDRESS.replace(" ", "+")
+# quote_plus so special chars (e.g. the '#' in the address) don't break the URL.
+MAPS_URL = "https://www.google.com/maps/search/?api=1&query=" + quote_plus(GYM_ADDRESS)
 
 # --- Thresholds (percent full) ---
 QUIET = 33      # <= QUIET  -> quiet (green)
