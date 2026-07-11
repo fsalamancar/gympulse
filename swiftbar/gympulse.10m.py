@@ -16,7 +16,11 @@ HOME = Path.home()
 REPO = Path(__file__).resolve().parent.parent
 CACHE = HOME / ".gympulse" / "latest.json"
 HISTOGRAM = HOME / ".gympulse" / "histogram.png"
-ICONS = REPO / "assets" / "icons"
+# Prefer the installed runtime icons (~/.gympulse/icons, outside macOS-protected
+# folders so SwiftBar never triggers Documents permission prompts); fall back to
+# the repo copy when running straight from a dev checkout.
+_INSTALLED_ICONS = HOME / ".gympulse" / "icons"
+ICONS = _INSTALLED_ICONS if _INSTALLED_ICONS.is_dir() else REPO / "assets" / "icons"
 MAPS_FALLBACK = "https://www.google.com/maps"
 BLOCKS = " ▁▂▃▄▅▆▇█"
 
