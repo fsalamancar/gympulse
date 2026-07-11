@@ -55,6 +55,13 @@ TZ = ZoneInfo("America/Bogota")
 CACHE_DIR = Path.home() / ".gympulse"
 LATEST_JSON = CACHE_DIR / "latest.json"
 HISTORY_CSV = CACHE_DIR / "history.csv"
+
+# --- Phase 3 widget hand-off (OFF until the widget exists) ---
+# ~/Library/Group Containers is TCC-protected on modern macOS: writing there from
+# the daemon triggers the recurring "python would like to access data from other
+# apps" prompt. Flip to True only after building the WidgetKit app (Phase 3),
+# which legitimately reads this copy.
+APP_GROUP_COPY = False
 APP_GROUP_JSON = (
     Path.home()
     / "Library/Group Containers/group.dev.francisco.gympulse/latest.json"

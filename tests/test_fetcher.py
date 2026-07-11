@@ -17,10 +17,24 @@ def test_write_json_atomic_and_readable(tmp_path, monkeypatch):
     monkeypatch.setattr(fetcher.config, "LATEST_JSON", target)
     monkeypatch.setattr(fetcher.config, "CACHE_DIR", tmp_path)
     monkeypatch.setattr(fetcher.config, "APP_GROUP_JSON", tmp_path / "grp" / "latest.json")
+    monkeypatch.setattr(fetcher.config, "APP_GROUP_COPY", True)  # Phase 3 opt-in
     fetcher.write_json({"live": 42, "ok": True})
     assert json.loads(target.read_text())["live"] == 42
     # App Group copy is best-effort; parent created, file written
     assert (tmp_path / "grp" / "latest.json").exists()
+
+
+def test_write_json_skips_group_container_by_default(tmp_path, monkeypatch):
+    # Group Containers are TCC-protected (recurring 'access data from other apps'
+    # prompt); with the default flag OFF nothing must be written there.
+    target = tmp_path / "latest.json"
+    monkeypatch.setattr(fetcher.config, "LATEST_JSON", target)
+    monkeypatch.setattr(fetcher.config, "CACHE_DIR", tmp_path)
+    monkeypatch.setattr(fetcher.config, "APP_GROUP_JSON", tmp_path / "grp" / "latest.json")
+    monkeypatch.setattr(fetcher.config, "APP_GROUP_COPY", False)
+    fetcher.write_json({"live": 42, "ok": True})
+    assert target.exists()
+    assert not (tmp_path / "grp").exists()
 
 
 def test_fetch_malformed_curve_is_soft(monkeypatch):

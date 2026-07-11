@@ -1,9 +1,13 @@
 # GymPulse Widget (Phase 3 — deferred)
 
-The data side is ready: `fetcher.py` already writes a copy to the App Group
+The data side is ready: `fetcher.py` can write a copy to the App Group
 container. Building the widget is a manual Xcode step.
 
 ## Setup
+0. Set `APP_GROUP_COPY = True` in `fetcher/config.py` and re-run `./install.sh`.
+   (It ships OFF: writing to `~/Library/Group Containers` from the daemon makes
+   macOS repeatedly ask "python would like to access data from other apps".
+   Expect that prompt ONCE when enabling — click Allow.)
 1. Xcode → new macOS App "GymPulse" (SwiftUI) + a **Widget Extension** target.
 2. On BOTH targets: Signing & Capabilities → **+ App Group** →
    `group.dev.francisco.gympulse`.

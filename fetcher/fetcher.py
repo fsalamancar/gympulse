@@ -94,10 +94,12 @@ def fetch() -> dict:
 
 
 def write_json(payload: dict) -> None:
-    """Atomic write to LATEST_JSON, plus best-effort App Group copy."""
+    """Atomic write to LATEST_JSON, plus (opt-in) best-effort App Group copy."""
     config.CACHE_DIR.mkdir(parents=True, exist_ok=True)
     blob = json.dumps(payload, ensure_ascii=False, indent=2)
     _atomic_write(config.LATEST_JSON, blob)
+    if not getattr(config, "APP_GROUP_COPY", False):
+        return  # Group Containers are TCC-protected; only touch them in Phase 3
     try:  # widget copy is best-effort; container may not exist yet
         config.APP_GROUP_JSON.parent.mkdir(parents=True, exist_ok=True)
         _atomic_write(config.APP_GROUP_JSON, blob)
