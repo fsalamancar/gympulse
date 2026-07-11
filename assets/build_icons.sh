@@ -11,21 +11,30 @@ mkdir -p "$OUT"
 # 1) Slice into 6 tiles s_0..s_5 (3 cols x 2 rows).
 magick "$SHEET" -crop 3x2@ +repage "$OUT/s_%d.png"
 
-# 1b) Monochrome WIREFRAME menu-bar glyphs, from the hi-res tiles BEFORE they are
-#     downscaled. Canny edge detection traces every boundary (outer outline, plate
-#     divisions, handle) into clean line-art; we turn those edges into black+alpha
-#     so macOS renders them as adaptive template icons (white lines on a dark bar,
-#     black on light) that match the slim system menu-bar icons. 32px @144dpi = 16pt.
+# 1b) Monochrome menu-bar glyphs, from the hi-res tiles BEFORE they are downscaled.
+#     A FILLED dumbbell (bold + clearly visible next to system icons) with the
+#     structural lines (outer outline, plate divisions, handle) cut out as thin
+#     see-through gaps via Canny edges — so it reads as a solid dumbbell WITH detail,
+#     not a featureless blob. Black + alpha -> macOS renders it as an adaptive
+#     template (white on a dark bar, black on light). 32px @144dpi = 16pt.
 #     template = clean dumbbell (busy shape s_2); template_error = cracked (s_5).
-_wireframe() {  # $1 = source tile, $2 = output
+_glyph() {  # $1 = source tile, $2 = output
+  local sil edges WH; sil=$(mktemp).png; edges=$(mktemp).png
+  WH=$(magick identify -format "%wx%h" "$1")
+  # silhouette alpha = full dumbbell footprint (key only the OUTER white)
+  magick "$1" -alpha set -bordercolor white -border 1 -fuzz 15% -fill none \
+    -draw "alpha 0,0 floodfill" -shave 1x1 +repage -alpha extract "$sil"
+  # structural lines, thickened, then inverted so lines become the cut-out gaps
   magick "$1" -background white -flatten -colorspace Gray -canny 0x1+10%+30% \
-    \( +clone \) -alpha off -compose CopyOpacity -composite \
-    -channel RGB -evaluate set 0 +channel \
-    -channel A -morphology Dilate Disk:1.2 +channel \
+    -morphology Dilate Disk:2 -negate "$edges"
+  # final alpha = silhouette AND NOT(lines); paint it solid black; size to 16pt
+  magick "$sil" "$edges" -compose multiply -composite \
+    \( -size "$WH" xc:black \) +swap -alpha off -compose CopyOpacity -composite \
     -trim +repage -filter Lanczos -resize x32 -units PixelsPerInch -density 144 "$2"
+  rm -f "$sil" "$edges"
 }
-_wireframe "$OUT/s_2.png" "$OUT/template.png"
-_wireframe "$OUT/s_5.png" "$OUT/template_error.png"
+_glyph "$OUT/s_2.png" "$OUT/template.png"
+_glyph "$OUT/s_5.png" "$OUT/template_error.png"
 
 # 2) Key out the white background to transparency (flood-fill from the corner so
 #    only the OUTER white becomes transparent — white pixels inside a dumbbell,
@@ -52,4 +61,4 @@ mv "$OUT/s_4.png" "$OUT/nodata.png"
 mv "$OUT/s_5.png" "$OUT/error.png"
 rm -f "$OUT/s_3.png"   # spare red
 
-echo "Built: $OUT/{quiet,moderate,busy,nodata,error}.png (color, 18pt) + template{,_error}.png (wireframe, 16pt)"
+echo "Built: $OUT/{quiet,moderate,busy,nodata,error}.png (color, 18pt) + template{,_error}.png (filled glyph, 16pt)"
