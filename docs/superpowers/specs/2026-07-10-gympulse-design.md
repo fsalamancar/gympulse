@@ -22,6 +22,7 @@
 | Repo home | `/Users/fjosesala/Documents/GitHub/gympulse`, `git init` | Empty dir already open; matches plan layout |
 | Python env | `uv` venv at `.venv/`, `livepopulartimes` pinned | launchd needs a stable interpreter path; anaconda base is fragile; matches `uv` preference |
 | Config | Single `fetcher/config.py` (address, thresholds, quiet cutoff) | Keeps the gym address/thresholds out of 3 files |
+| Swappable gym | Gym address + display name live in ONE place (`config.py`); changing gym = edit one line, no code changes | User wants to point it at a different gym anytime |
 | Menu-bar icon | Sliced pixel dumbbells as base64 via SwiftBar `\| image=`, `%` as text beside it | Full-color icon = the signal. **No emoji.** |
 | Icon rendering | Full color (NOT SwiftBar template mode) | The green/amber/red carries meaning; template mode would monochrome it |
 | Icon pipeline | One-time `assets/build_icons.sh`: slice 3×2 sheet → strip checkerboard → resize for retina bar → commit PNGs | Runtime never re-processes; plugin reads a PNG + base64-encodes |
@@ -85,7 +86,7 @@ Schema from the plan. Derived fields computed **once** in Python so the UI stays
 ```
 gympulse/
 ├── fetcher/
-│   ├── config.py         # address, thresholds, quiet cutoff
+│   ├── config.py         # address, display name, thresholds, quiet cutoff (single source — swap gym here)
 │   ├── fetcher.py         # scrape -> compute derived -> write latest.json (all logic)
 │   └── gym_busy.py        # existing CLI, refactored to call fetcher (thin wrapper)
 ├── assets/
