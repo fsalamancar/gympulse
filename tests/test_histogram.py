@@ -19,13 +19,26 @@ def test_render_writes_a_png(tmp_path):
 
 
 @pytest.mark.skipif(shutil.which("magick") is None, reason="ImageMagick not installed")
-def test_render_with_live_overlay_draws_two_bars(tmp_path):
-    # live at the current hour -> an extra (red) bar is drawn, so the op list is longer
+def test_render_with_live_overlay_draws_two_bars_and_badge(tmp_path):
     base = histogram._draw_ops(_TODAY, now_hour=9, live=None)
-    withlive = histogram._draw_ops(_TODAY, now_hour=9, live=100)
-    assert withlive.count("-draw") == base.count("-draw") + 1  # one extra (red) bar
+    withlive = histogram._draw_ops(_TODAY, now_hour=9, live=100, verdict="busier")
+    # live mode adds the red bar + the EN TIEMPO REAL badge; forecast mode shows a note
+    n_bars = lambda ops: sum("roundrectangle" in o for o in ops)
+    assert n_bars(withlive) == n_bars(base) + 2      # +1 live bar, +1 badge pill
+    joined = " ".join(withlive)
+    assert "EN TIEMPO REAL" in joined
+    assert "concurrido de lo habitual" in joined      # verdict text rendered
+    assert "Pronóstico" in " ".join(base)             # forecast note without live
     out = tmp_path / "h.png"
-    assert histogram.render(_TODAY, now_hour=9, out_path=out, live=100) is True
+    assert histogram.render(_TODAY, now_hour=9, out_path=out,
+                            live=100, verdict="busier") is True
+
+
+def test_axis_starts_at_6am_like_google():
+    ops = histogram._draw_ops(_TODAY, now_hour=9, live=None)
+    labels = [o for o in ops if o.startswith("text ") and o.endswith(".m.'")]
+    assert labels and labels[0].endswith("'6a.m.'")   # first tick is 6 a.m.
+    assert labels[-1].endswith("'3a.m.'")             # overnight wraps to the end
 
 
 def test_render_rejects_bad_input(tmp_path):

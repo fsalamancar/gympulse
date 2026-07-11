@@ -133,7 +133,8 @@ def _render_histogram(payload: dict) -> None:
         from datetime import datetime as _dt
         from fetcher.histogram import render
         render(payload.get("today") or [], _dt.now(config.TZ).hour,
-               config.CACHE_DIR / "histogram.png", live=payload.get("live"))
+               config.CACHE_DIR / "histogram.png", live=payload.get("live"),
+               verdict=payload.get("verdict", "usual"))
     except Exception:
         pass
 
