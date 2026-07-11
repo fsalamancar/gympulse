@@ -1,6 +1,6 @@
 """Render a Google-style busyness histogram PNG via ImageMagick (no Python deps).
 
-Clones Google's "Horas punta" widget: a red "EN TIEMPO REAL" badge + verdict text,
+Clones Google's popular-times widget: a red "LIVE" badge + verdict text,
 teal typical bars with the tall red live bar at the current hour, a baseline, and
 hour labels on a 6 a.m.-first axis (overnight hours at the end) — exactly like
 Google renders it. Written to ~/.gympulse/histogram.png each fetch so the SwiftBar
@@ -41,10 +41,10 @@ _BG = "none"            # transparent
 
 _DAY_START = 6          # Google's popular-times axis starts at 6 a.m.
 
-_VERDICT_ES = {
-    "busier": "Más concurrido de lo habitual",
-    "quieter": "Menos concurrido de lo habitual",
-    "usual": "Concurrencia habitual",
+_VERDICT_TEXT = {
+    "busier": "Busier than usual",
+    "quieter": "Less busy than usual",
+    "usual": "As busy as usual",
 }
 
 
@@ -64,10 +64,10 @@ def _draw_ops(today: list[int], now_hour: int, live: int | None,
     font = _font()
     ops: list[str] = []
 
-    # --- Header: red EN TIEMPO REAL badge + verdict (live), or gray forecast note ---
+    # --- Header: red LIVE badge + verdict (live), or gray forecast note ---
     if font:
         if live is not None:
-            badge_txt = "EN TIEMPO REAL"
+            badge_txt = "LIVE"
             bx0, by0, by1 = _PAD_L, 8, 40
             bx1 = bx0 + 12 + len(badge_txt) * 12.2 + 12  # padded pill width
             ops += ["-fill", _RED,
@@ -76,10 +76,10 @@ def _draw_ops(today: list[int], now_hour: int, live: int | None,
                     "-draw", f"text {bx0 + 12},{by1 - 10} '{badge_txt}'",
                     "-fill", _TICK, "-pointsize", "22",
                     "-draw", f"text {bx1 + 14:.0f},{by1 - 9} "
-                             f"'{_VERDICT_ES.get(verdict, _VERDICT_ES['usual'])}'"]
+                             f"'{_VERDICT_TEXT.get(verdict, _VERDICT_TEXT['usual'])}'"]
         else:
             ops += ["-fill", _TICK, "-font", font, "-pointsize", "22",
-                    "-draw", f"text {_PAD_L},32 'Pronóstico típico'"]
+                    "-draw", f"text {_PAD_L},32 'Typical forecast'"]
 
     # --- Bars, on a 6 a.m.-first axis like Google (overnight at the end) ---
     def bar(x0: float, w: float, val: int, color: str) -> None:
@@ -119,7 +119,7 @@ def render(today: list[int], now_hour: int, out_path: Path,
     """Draw the widget to out_path. Returns True on success, False on any failure.
 
     If `live` is given, the current hour shows two bars (teal typical + red live)
-    plus the EN TIEMPO REAL badge and verdict text, mirroring Google's widget."""
+    plus the LIVE badge and verdict text, mirroring Google's widget."""
     magick = shutil.which("magick")
     if not magick or not today or len(today) < 24:
         return False

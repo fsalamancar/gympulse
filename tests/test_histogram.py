@@ -22,13 +22,13 @@ def test_render_writes_a_png(tmp_path):
 def test_render_with_live_overlay_draws_two_bars_and_badge(tmp_path):
     base = histogram._draw_ops(_TODAY, now_hour=9, live=None)
     withlive = histogram._draw_ops(_TODAY, now_hour=9, live=100, verdict="busier")
-    # live mode adds the red bar + the EN TIEMPO REAL badge; forecast mode shows a note
+    # live mode adds the red bar + the LIVE badge; forecast mode shows a note
     n_bars = lambda ops: sum("roundrectangle" in o for o in ops)
     assert n_bars(withlive) == n_bars(base) + 2      # +1 live bar, +1 badge pill
     joined = " ".join(withlive)
-    assert "EN TIEMPO REAL" in joined
-    assert "concurrido de lo habitual" in joined      # verdict text rendered
-    assert "Pronóstico" in " ".join(base)             # forecast note without live
+    assert "LIVE" in joined
+    assert "than usual" in joined                     # verdict text rendered
+    assert "Typical forecast" in " ".join(base)       # forecast note without live
     out = tmp_path / "h.png"
     assert histogram.render(_TODAY, now_hour=9, out_path=out,
                             live=100, verdict="busier") is True
