@@ -19,49 +19,51 @@ def _payload(**over):
     return base
 
 
-def test_menu_bar_title_is_monochrome_icon_only_no_percent():
+def test_menu_bar_title_is_gauge_icon_only_no_percent():
     out = plugin.render(_payload(), ICONS, cache_age_min=2.0)
     title = out.split("\n---\n")[0]
-    assert "templateImage=" in title   # monochrome menu-bar glyph
+    assert "templateImage=" in title   # monochrome gauge glyph
     assert "%" not in title            # the percentage lives in the dropdown, not the bar
     assert "\n---\n" in out
 
 
 def test_dropdown_still_shows_percent_and_actions():
     out = plugin.render(_payload(), ICONS, cache_age_min=2.0)
-    dropdown = out.split("\n---\n", 1)[1]
-    assert "28%" in dropdown            # busyness detail is in the dropdown
+    assert "28%" in out.split("\n---\n", 1)[1]   # busyness detail is in the dropdown
     assert "Open in Google Maps" in out
     assert "href=" in out
 
 
-def test_render_error_state_uses_cracked_template():
-    out = plugin.render(
-        _payload(ok=False, error="boom", level="error", live=None),
-        ICONS, cache_age_min=125.0,
-    )
+def test_gauge_stem_fills_with_busyness():
+    # live drives the gauge, rounded to the nearest 10%
+    assert plugin._menubar_stem(_payload(live=28)) == "fill_30"
+    assert plugin._menubar_stem(_payload(live=0)) == "fill_0"
+    assert plugin._menubar_stem(_payload(live=88)) == "fill_90"
+    assert plugin._menubar_stem(_payload(live=100)) == "fill_100"
+
+
+def test_gauge_uses_forecast_when_no_live():
+    # no live measurement -> the forecast for this hour fills the gauge
+    assert plugin._menubar_stem(_payload(live=None, typical_now=45)) == "fill_50"
+    assert plugin._menubar_stem(_payload(live=None, typical_now=None)) == "fill_0"
+
+
+def test_error_uses_cracked_glyph():
+    stem = plugin._menubar_stem(_payload(ok=False, error="boom", live=None))
+    assert stem == "template_error"
+    out = plugin.render(_payload(ok=False, error="boom", level="error", live=None),
+                        ICONS, cache_age_min=125.0)
     title = out.split("\n---\n")[0]
-    # cracked monochrome glyph + staleness note, never a crash
-    assert "templateImage=" in title
-    assert plugin._template_b64(False, ICONS) in title   # specifically the error glyph
+    assert plugin._read_b64("template_error", ICONS) in title
     assert "updated" in out.lower()
 
 
-def test_render_forecast_no_live_still_icon_only():
-    out = plugin.render(_payload(level="nodata", live=None), ICONS, cache_age_min=5.0)
-    title = out.split("\n---\n")[0]
-    assert "templateImage=" in title
-    assert "%" not in title
-    # forecast detail still surfaces in the dropdown
-    assert "~" in out or "no live" in out.lower()
+def test_all_gauge_levels_and_error_glyph_exist_and_load():
+    for p in range(0, 101, 10):
+        assert plugin._read_b64(f"fill_{p}", ICONS) != "", f"missing fill_{p}"
+    assert plugin._read_b64("template_error", ICONS) != ""
 
 
-def test_template_b64_selects_clean_vs_error_glyph():
-    assert plugin._template_b64(True, ICONS) != ""
-    assert plugin._template_b64(False, ICONS) != ""
-    assert plugin._template_b64(True, ICONS) != plugin._template_b64(False, ICONS)
-
-
-def test_template_b64_missing_icon_dir_returns_empty_not_crash():
+def test_read_b64_missing_icon_dir_returns_empty_not_crash():
     # A bad icons dir must not raise — the last-resort handler depends on this.
-    assert plugin._template_b64(True, Path("/nonexistent/icons")) == ""
+    assert plugin._read_b64("template_error", Path("/nonexistent/icons")) == ""

@@ -22,29 +22,29 @@ MAPS_FALLBACK = "https://www.google.com/maps"
 STALE_MIN = 10.0          # refresh cache if older than this
 BLOCKS = " ▁▂▃▄▅▆▇█"
 
-_ICON_FOR = {"quiet": "quiet", "moderate": "moderate", "busy": "busy",
-             "nodata": "nodata", "error": "error"}
-
-
-def _b64(level: str, icons_dir: Path) -> str:
-    """Base64 the state icon. Returns '' on any read problem so no caller —
+def _read_b64(stem: str, icons_dir: Path) -> str:
+    """Base64 an icon by file stem. Returns '' on any read problem so no caller —
     including the last-resort error handler — can be crashed by a bad icon file."""
-    p = icons_dir / f"{_ICON_FOR.get(level, 'error')}.png"
+    p = icons_dir / f"{stem}.png"
     try:
         return base64.b64encode(p.read_bytes()).decode()
     except OSError:
         return ""
 
 
-def _template_b64(ok: bool, icons_dir: Path) -> str:
-    """Base64 the monochrome menu-bar glyph: the clean dumbbell normally, the
-    cracked one on error. macOS renders template images adapting to light/dark,
-    so it matches the system menu-bar icons. '' on any read problem (never crash)."""
-    p = icons_dir / f"{'template' if ok else 'template_error'}.png"
-    try:
-        return base64.b64encode(p.read_bytes()).decode()
-    except OSError:
-        return ""
+def _menubar_stem(payload: dict) -> str:
+    """Pick the monochrome menu-bar glyph. Normally a horizontal gauge that fills
+    with busyness (live if present, else the forecast for this hour) in 10% steps:
+    fill_0 (empty outline) .. fill_100 (solid). A real error shows the cracked glyph."""
+    if not payload.get("ok", True):
+        return "template_error"
+    pct = payload.get("live")
+    if pct is None:
+        pct = payload.get("typical_now")
+    if pct is None:
+        return "fill_0"
+    step = max(0, min(100, int(pct / 10.0 + 0.5) * 10))
+    return f"fill_{step}"
 
 
 def _bar(v: int) -> str:
@@ -55,9 +55,9 @@ def render(payload: dict, icons_dir: Path, cache_age_min: float) -> str:
     live = payload.get("live")
     lines: list[str] = []
 
-    # --- Menu bar: monochrome dumbbell only, no % (busyness detail is in the
-    #     dropdown below). Error shows the cracked glyph so a real break is visible. ---
-    img = _template_b64(payload.get("ok", True), icons_dir)
+    # --- Menu bar: a monochrome dumbbell gauge that fills horizontally with
+    #     busyness; no % text (detail is in the dropdown). Error = cracked glyph. ---
+    img = _read_b64(_menubar_stem(payload), icons_dir)
     lines.append(f"| templateImage={img}" if img else "gym")
     lines.append("---")
 
@@ -123,7 +123,7 @@ def main() -> None:
         payload, age = _load_or_fetch()
         print(render(payload, ICONS, age))
     except Exception as e:  # last-resort: never crash the menu bar
-        img = _template_b64(False, ICONS)  # cracked monochrome glyph, never an emoji
+        img = _read_b64("template_error", ICONS)  # cracked monochrome glyph, never an emoji
         print(f"| templateImage={img}" if img else "gym")
         print("---")
         print(f"GymPulse error: {e}")
