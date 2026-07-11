@@ -27,11 +27,16 @@ def test_menu_bar_title_is_gauge_icon_only_no_percent():
     assert "\n---\n" in out
 
 
-def test_dropdown_still_shows_percent_and_actions():
+def test_dropdown_shows_summary_histogram_and_actions():
     out = plugin.render(_payload(), ICONS, cache_age_min=2.0)
-    assert "28%" in out.split("\n---\n", 1)[1]   # busyness detail is in the dropdown
+    body = out.split("\n---\n", 1)[1]
+    assert "28%" in body                 # one-line busyness summary
+    # histogram: either the embedded PNG (if built) or the ascii fallback line
+    assert ("| image=" in body) or ("▁" in out or "█" in out or "▇" in out)
     assert "Open in Google Maps" in out
     assert "href=" in out
+    # the old verbose hour-by-hour text list is gone
+    assert "  06:00" not in out and "  18:00" not in out
 
 
 def test_gauge_stem_fills_with_busyness():

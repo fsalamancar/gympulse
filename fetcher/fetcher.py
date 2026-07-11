@@ -127,10 +127,22 @@ def append_history(payload: dict) -> None:
         w.writerow([payload["fetched_at"], payload["live"], payload["typical_now"]])
 
 
+def _render_histogram(payload: dict) -> None:
+    """Best-effort: draw the histogram PNG for the plugin dropdown. Never fatal."""
+    try:
+        from datetime import datetime as _dt
+        from fetcher.histogram import render
+        render(payload.get("today") or [], _dt.now(config.TZ).hour,
+               config.CACHE_DIR / "histogram.png")
+    except Exception:
+        pass
+
+
 def main() -> None:
     payload = fetch()
     write_json(payload)
     append_history(payload)
+    _render_histogram(payload)
 
 
 if __name__ == "__main__":

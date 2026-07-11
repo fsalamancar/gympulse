@@ -16,6 +16,7 @@ from pathlib import Path
 HOME = Path.home()
 REPO = Path(__file__).resolve().parent.parent
 CACHE = HOME / ".gympulse" / "latest.json"
+HISTOGRAM = HOME / ".gympulse" / "histogram.png"
 ICONS = REPO / "assets" / "icons"
 VENV_PY = REPO / ".venv" / "bin" / "python"
 MAPS_FALLBACK = "https://www.google.com/maps"
@@ -28,6 +29,14 @@ def _read_b64(stem: str, icons_dir: Path) -> str:
     p = icons_dir / f"{stem}.png"
     try:
         return base64.b64encode(p.read_bytes()).decode()
+    except OSError:
+        return ""
+
+
+def _hist_b64() -> str:
+    """Base64 the histogram PNG (written by the fetcher). '' if absent (fail-soft)."""
+    try:
+        return base64.b64encode(HISTOGRAM.read_bytes()).decode()
     except OSError:
         return ""
 
@@ -73,15 +82,15 @@ def render(payload: dict, icons_dir: Path, cache_age_min: float) -> str:
         lines.append(f"~{payload.get('typical_now')}% forecast — no live data right now")
     lines.append("---")
 
-    # --- Today's hourly bars ---
-    now_hour = datetime.now().hour
-    today = payload.get("today") or []
+    # --- Today's histogram (Google-style image), else a compact text fallback ---
+    hist_b64 = _hist_b64()
     lines.append(f"Today · {datetime.now():%A} | size=11")
-    for h, v in enumerate(today):
-        if v == 0 and not (6 <= h <= 23):
-            continue
-        marker = "   <- now" if h == now_hour else ""
-        lines.append(f"  {h:02d}:00  {_bar(v)}{_bar(v)}  {v:3d}%{marker} | font=Menlo size=12")
+    if hist_b64:
+        lines.append(f"| image={hist_b64}")   # teal bars + red 'now' bar, like Google
+    else:  # fail-soft: compact ascii sparkline if the PNG isn't there
+        today = payload.get("today") or []
+        spark = "".join(_bar(v) for v in today)
+        lines.append(f"{spark} | font=Menlo size=13")
     nq = payload.get("next_quiet")
     if nq:
         lines.append(f"Next quiet window: {nq}")
