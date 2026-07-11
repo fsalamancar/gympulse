@@ -26,11 +26,11 @@ def _font() -> str | None:
     return None
 
 # Canvas (physical px; tagged 144 DPI so it renders at half size, retina-crisp).
-_W, _H = 660, 190
-_PAD_L, _PAD_R, _PAD_T, _PAD_B = 10, 10, 12, 26
+_W, _H = 660, 200
+_PAD_L, _PAD_R, _PAD_T, _PAD_B = 10, 10, 12, 34
 _TEAL = "#5b8a9a"
 _RED = "#d1553f"
-_TICK = "#b8c2c6"
+_TICK = "#808080"  # mid-gray: readable on both light and dark dropdown backgrounds
 _BG = "none"  # transparent
 
 
@@ -62,12 +62,12 @@ def _draw_ops(today: list[int], now_hour: int, live: int | None) -> list[str]:
     # Hour labels under the axis (every 3h), only if a usable font file exists.
     font = _font()
     if font:
-        ops += ["-fill", _TICK, "-font", font, "-pointsize", "19"]
+        ops += ["-fill", _TICK, "-font", font, "-pointsize", "24"]
         for h in range(0, 24, 3):
             hr12 = ((h - 1) % 12) + 1
             lab = f"{hr12}{'a' if h < 12 else 'p'}"
             x = _PAD_L + h * slot + slot / 2
-            ops += ["-draw", f"text {x - 10:.0f},{_H - 6} '{lab}'"]
+            ops += ["-draw", f"text {x - 13:.0f},{_H - 8} '{lab}'"]
     return ops
 
 
