@@ -44,6 +44,6 @@ markup change) it returns `ok=False` and `fetcher.py` silently falls back to the
 self-tuned `WEEKLY_CURVE` forecast — the menu bar keeps working.
 
 ## Politeness / block-risk
-Only the launchd daemon scrapes: once per 15 minutes, one page load. The
+Only the launchd daemon scrapes: once per 30 minutes, one page load. The
 SwiftBar plugin never touches the network. If Google changes its markup, fix
 `_EXTRACT_JS` in `scrape/live.py` (the class names above are the fragile part).

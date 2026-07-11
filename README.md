@@ -20,7 +20,7 @@
 
 ## The idea
 
-The dumbbell in your menu bar **is a gauge**. Empty outline = dead gym. Solid = packed. It refreshes every 15 minutes from Google's live data:
+The dumbbell in your menu bar **is a gauge**. Empty outline = dead gym. Solid = packed. It refreshes every 30 minutes from Google's live data:
 
 <p align="center">
   <img src="assets/readme/gauge-states.png" width="620" alt="Gauge states: the dumbbell fills from empty outline (0%) to solid (100%)">
@@ -55,7 +55,7 @@ Then `./install.sh` — done.
 ## How it works
 
 ```
-launchd (every 15 min)
+launchd (every 30 min)
   └─ fetcher.py
        ├─ scrape/live.py ─── your real Chrome (headless) ──> Google "Popular times"
        │                     └─ live red bar + typical curve + busier/quieter verdict

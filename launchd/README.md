@@ -1,6 +1,6 @@
 # GymPulse launchd agent
 
-Fetches every 15 min and writes `~/.gympulse/latest.json`.
+Fetches every 30 min and writes `~/.gympulse/latest.json`.
 
 ## Install
 ```bash
