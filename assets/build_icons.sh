@@ -11,6 +11,22 @@ mkdir -p "$OUT"
 # 1) Slice into 6 tiles s_0..s_5 (3 cols x 2 rows).
 magick "$SHEET" -crop 3x2@ +repage "$OUT/s_%d.png"
 
+# 1b) Monochrome WIREFRAME menu-bar glyphs, from the hi-res tiles BEFORE they are
+#     downscaled. Canny edge detection traces every boundary (outer outline, plate
+#     divisions, handle) into clean line-art; we turn those edges into black+alpha
+#     so macOS renders them as adaptive template icons (white lines on a dark bar,
+#     black on light) that match the slim system menu-bar icons. 32px @144dpi = 16pt.
+#     template = clean dumbbell (busy shape s_2); template_error = cracked (s_5).
+_wireframe() {  # $1 = source tile, $2 = output
+  magick "$1" -background white -flatten -colorspace Gray -canny 0x1+10%+30% \
+    \( +clone \) -alpha off -compose CopyOpacity -composite \
+    -channel RGB -evaluate set 0 +channel \
+    -channel A -morphology Dilate Disk:1.2 +channel \
+    -trim +repage -filter Lanczos -resize x32 -units PixelsPerInch -density 144 "$2"
+}
+_wireframe "$OUT/s_2.png" "$OUT/template.png"
+_wireframe "$OUT/s_5.png" "$OUT/template_error.png"
+
 # 2) Key out the white background to transparency (flood-fill from the corner so
 #    only the OUTER white becomes transparent — white pixels inside a dumbbell,
 #    if any, are preserved). Low fuzz keeps the grey metal/outlines intact.
@@ -36,12 +52,4 @@ mv "$OUT/s_4.png" "$OUT/nodata.png"
 mv "$OUT/s_5.png" "$OUT/error.png"
 rm -f "$OUT/s_3.png"   # spare red
 
-# 5) Monochrome menu-bar glyphs (black content + alpha). macOS renders template
-#    images adapting to light/dark, so these match the system menu-bar icons.
-#    Smaller (32px @144dpi = 16pt). template = clean dumbbell, template_error = cracked.
-magick "$OUT/busy.png"  -channel RGB -evaluate set 0 +channel \
-  -resize x32 -units PixelsPerInch -density 144 "$OUT/template.png"
-magick "$OUT/error.png" -channel RGB -evaluate set 0 +channel \
-  -resize x32 -units PixelsPerInch -density 144 "$OUT/template_error.png"
-
-echo "Built: $OUT/{quiet,moderate,busy,nodata,error}.png + template{,_error}.png (monochrome, 16pt)"
+echo "Built: $OUT/{quiet,moderate,busy,nodata,error}.png (color, 18pt) + template{,_error}.png (wireframe, 16pt)"
