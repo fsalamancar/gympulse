@@ -22,10 +22,10 @@ SIL=$(mktemp).png; OUTL=$(mktemp).png
 # silhouette footprint (key only the OUTER white), sized to final 16pt
 magick "$TILE" -alpha set -bordercolor white -border 1 -fuzz 15% -fill none \
   -draw "alpha 0,0 floodfill" -shave 1x1 +repage -alpha extract \
-  -filter Lanczos -resize x44 "$SIL"
+  -filter Lanczos -resize x52 "$SIL"
 # outline (structural lines), slightly thickened so the empty gauge stays visible
 magick "$TILE" -background white -flatten -colorspace Gray -canny 0x1+10%+30% \
-  -morphology Dilate Disk:1.5 -filter Lanczos -resize x44 "$OUTL"
+  -morphology Dilate Disk:1.5 -filter Lanczos -resize x52 "$OUTL"
 GW=$(magick identify -format "%w" "$SIL"); GH=$(magick identify -format "%h" "$SIL")
 LMASK=$(mktemp).png
 for p in 0 10 20 30 40 50 60 70 80 90 100; do
@@ -47,7 +47,7 @@ rm -f "$SIL" "$OUTL" "$LMASK"
 magick "$OUT/s_5.png" -background white -flatten -colorspace Gray -canny 0x1+10%+30% \
   -morphology Dilate Disk:2 \( +clone \) -alpha off -compose CopyOpacity -composite \
   -channel RGB -evaluate set 0 +channel -trim +repage \
-  -filter Lanczos -resize x44 -units PixelsPerInch -density 144 "$OUT/template_error.png"
+  -filter Lanczos -resize x52 -units PixelsPerInch -density 144 "$OUT/template_error.png"
 
 # 2) Key out the white background to transparency (flood-fill from the corner so
 #    only the OUTER white becomes transparent — white pixels inside a dumbbell,
