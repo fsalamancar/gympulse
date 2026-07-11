@@ -31,7 +31,11 @@ struct Provider: TimelineProvider {
             .appendingPathComponent("latest.json")
         guard let data = try? Data(contentsOf: url),
               let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return placeholder(in: NullContext()) }
+        else {
+            // No readable JSON yet (e.g. daemon has not written it): show a neutral entry.
+            return GymEntry(date: .now, live: nil, level: "nodata",
+                            verdict: "usual", today: [], nextQuiet: nil)
+        }
         return GymEntry(
             date: .now,
             live: j["live"] as? Int,
