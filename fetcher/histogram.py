@@ -118,6 +118,14 @@ def _draw_ops(today: list[int], now_hour: int, live: int | None,
         else:
             bar(slot_x + (slot - bar_w) / 2, bar_w, today[h], _TEAL)
 
+    # --- Vertical "now" marker at the current hour, on top of the bars so it
+    # stays visible over a tall bar (the only current-time cue in forecast mode) ---
+    now_i = (now_hour - _DAY_START) % 24
+    now_x = _PAD_L + now_i * slot + slot / 2
+    ops += ["-stroke", _RED, "-strokewidth", "2", "-fill", "none",
+            "-draw", f"line {now_x:.1f},{plot_top + 6} {now_x:.1f},{y_base}",
+            "-stroke", "none", "-fill", "none"]
+
     # --- Baseline under the bars ---
     ops += ["-stroke", _BASELINE, "-strokewidth", "2",
             "-draw", f"line {_PAD_L},{y_base + 1} {_W - _PAD_R},{y_base + 1}",

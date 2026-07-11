@@ -65,3 +65,17 @@ def test_find_magick_returns_none_when_absent(monkeypatch):
     monkeypatch.setattr(shutil, "which", lambda _: None)
     monkeypatch.setattr(histogram, "_MAGICK_FALLBACKS", ["/nonexistent/magick"])
     assert histogram._find_magick() is None
+
+
+def test_now_marker_vertical_line_at_current_hour():
+    """A vertical line marks the current hour (the only 'now' cue in forecast mode)."""
+    ops = histogram._draw_ops(_TODAY, now_hour=18, live=None)
+    i = (18 - histogram._DAY_START) % 24
+    slot = (histogram._W - histogram._PAD_L - histogram._PAD_R) / 24.0
+    x = histogram._PAD_L + i * slot + slot / 2
+    vlines = [o for o in ops if o.startswith("line ") and f"line {x:.1f}," in o
+              and o.count(f"{x:.1f},") == 2]  # same x twice = vertical
+    assert len(vlines) == 1
+    # present in live mode too
+    ops_live = histogram._draw_ops(_TODAY, now_hour=18, live=90)
+    assert any(o.startswith("line ") and o.count(f"{x:.1f},") == 2 for o in ops_live)
