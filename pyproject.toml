@@ -1,0 +1,20 @@
+[project]
+name = "gympulse"
+version = "0.1.0"
+description = "Gym busyness in your Mac menu bar"
+requires-python = ">=3.11"
+# playwright drives the user's real Chrome for the OPTIONAL live Google scrape
+# (config.USE_LIVE_SCRAPE). With it off, the app is stdlib-only using WEEKLY_CURVE.
+dependencies = [
+    "playwright>=1.40",  # drives real Chrome for the optional live Google scrape
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+include = ["fetcher*", "scrape*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

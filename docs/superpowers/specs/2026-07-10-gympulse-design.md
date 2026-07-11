@@ -7,6 +7,16 @@
 
 ---
 
+## ⚠️ DATA SOURCE PIVOT (2026-07-10, after Tasks 1–4)
+
+**The Google "Popular times" scrape is dead and is NOT used.** Investigation (see `.superpowers/sdd/scraper-investigation.md`) proved, across two methods (the `livepopulartimes` search endpoint AND headless/headed browser DOM scraping) and two venues, that Google no longer serves Popular Times to automated sessions. Paid APIs (BestTime $29/mo, SerpApi) were rejected — the user requires **completely free**. The gym (Fitness24Seven, BRP-Systems backend) publishes no free public occupancy feed.
+
+**New source: a self-tuned weekly forecast.** `fetcher/config.py` holds an editable `WEEKLY_CURVE` (7 days × 24 hourly values, 0–100) the user tunes to their gym's real rhythm. `fetcher.py` reads it — **no network, no dependencies (stdlib only), never breaks.** `latest.json` schema is unchanged except one added honest field: `"source": "forecast"`. `live` stays `null` (no live measurement); the icon colors by the forecast value for the current hour, and the dropdown's "best windows" / "next quiet" come straight from the curve.
+
+Everything downstream (Tasks 5–10: CLI, icons, SwiftBar, launchd, widget) is unaffected — the JSON contract holds. The `⚫ error` state is now reserved for a malformed curve; there is no scraper to fail.
+
+---
+
 ## Scope (this build)
 
 - **Phases 1 & 2:** built to a fully working, verified state.
