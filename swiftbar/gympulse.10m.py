@@ -36,24 +36,29 @@ def _b64(level: str, icons_dir: Path) -> str:
         return ""
 
 
+def _template_b64(ok: bool, icons_dir: Path) -> str:
+    """Base64 the monochrome menu-bar glyph: the clean dumbbell normally, the
+    cracked one on error. macOS renders template images adapting to light/dark,
+    so it matches the system menu-bar icons. '' on any read problem (never crash)."""
+    p = icons_dir / f"{'template' if ok else 'template_error'}.png"
+    try:
+        return base64.b64encode(p.read_bytes()).decode()
+    except OSError:
+        return ""
+
+
 def _bar(v: int) -> str:
     return BLOCKS[min(len(BLOCKS) - 1, round(v / 100 * (len(BLOCKS) - 1)))]
 
 
 def render(payload: dict, icons_dir: Path, cache_age_min: float) -> str:
-    level = payload.get("level", "error")
     live = payload.get("live")
-    img = _b64(level, icons_dir)
     lines: list[str] = []
 
-    # --- Menu bar title line: icon + percent (or ~forecast when no live) ---
-    if live is not None:
-        title = f"{live}%"
-    elif payload.get("typical_now") is not None:
-        title = f"~{payload['typical_now']}%"
-    else:
-        title = "gym"
-    lines.append(f"{title} | image={img}" if img else title)
+    # --- Menu bar: monochrome dumbbell only, no % (busyness detail is in the
+    #     dropdown below). Error shows the cracked glyph so a real break is visible. ---
+    img = _template_b64(payload.get("ok", True), icons_dir)
+    lines.append(f"| templateImage={img}" if img else "gym")
     lines.append("---")
 
     # --- Verdict / status ---
@@ -118,8 +123,8 @@ def main() -> None:
         payload, age = _load_or_fetch()
         print(render(payload, ICONS, age))
     except Exception as e:  # last-resort: never crash the menu bar
-        img = _b64("error", ICONS)  # cracked-bar icon, never an emoji
-        print(f"gym | image={img}" if img else "gym")
+        img = _template_b64(False, ICONS)  # cracked monochrome glyph, never an emoji
+        print(f"| templateImage={img}" if img else "gym")
         print("---")
         print(f"GymPulse error: {e}")
 

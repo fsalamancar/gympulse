@@ -19,42 +19,49 @@ def _payload(**over):
     return base
 
 
-def test_render_shows_live_percent_and_menu_separator():
+def test_menu_bar_title_is_monochrome_icon_only_no_percent():
     out = plugin.render(_payload(), ICONS, cache_age_min=2.0)
-    assert "28%" in out
+    title = out.split("\n---\n")[0]
+    assert "templateImage=" in title   # monochrome menu-bar glyph
+    assert "%" not in title            # the percentage lives in the dropdown, not the bar
     assert "\n---\n" in out
-    assert "image=" in out.split("\n---\n")[0]      # icon in the title line
+
+
+def test_dropdown_still_shows_percent_and_actions():
+    out = plugin.render(_payload(), ICONS, cache_age_min=2.0)
+    dropdown = out.split("\n---\n", 1)[1]
+    assert "28%" in dropdown            # busyness detail is in the dropdown
     assert "Open in Google Maps" in out
     assert "href=" in out
 
 
-def test_render_error_state_is_soft():
+def test_render_error_state_uses_cracked_template():
     out = plugin.render(
         _payload(ok=False, error="boom", level="error", live=None),
         ICONS, cache_age_min=125.0,
     )
-    # cracked icon + staleness note, never a crash
-    assert "image=" in out.split("\n---\n")[0]
+    title = out.split("\n---\n")[0]
+    # cracked monochrome glyph + staleness note, never a crash
+    assert "templateImage=" in title
+    assert plugin._template_b64(False, ICONS) in title   # specifically the error glyph
     assert "updated" in out.lower()
 
 
-def test_render_nodata_uses_grey_icon_and_no_percent_crash():
+def test_render_forecast_no_live_still_icon_only():
     out = plugin.render(_payload(level="nodata", live=None), ICONS, cache_age_min=5.0)
-    assert "image=" in out.split("\n---\n")[0]
-    assert "~" in out or "no live" in out.lower()   # shows forecast, not a bare None
-
-
-def test_render_no_live_and_no_typical_falls_back_to_gym_title():
-    # Neither a live value nor a forecast for this hour: title is plain "gym",
-    # not a bare "None%" or a crash.
-    out = plugin.render(
-        _payload(level="error", live=None, typical_now=None), ICONS, cache_age_min=5.0
-    )
     title = out.split("\n---\n")[0]
-    assert "None" not in title
-    assert "gym" in title
+    assert "templateImage=" in title
+    assert "%" not in title
+    # forecast detail still surfaces in the dropdown
+    assert "~" in out or "no live" in out.lower()
 
 
-def test_b64_missing_icon_dir_returns_empty_not_crash():
+def test_template_b64_selects_clean_vs_error_glyph():
+    assert plugin._template_b64(True, ICONS) != ""
+    assert plugin._template_b64(False, ICONS) != ""
+    assert plugin._template_b64(True, ICONS) != plugin._template_b64(False, ICONS)
+
+
+def test_template_b64_missing_icon_dir_returns_empty_not_crash():
     # A bad icons dir must not raise — the last-resort handler depends on this.
-    assert plugin._b64("error", Path("/nonexistent/icons")) == ""
+    assert plugin._template_b64(True, Path("/nonexistent/icons")) == ""

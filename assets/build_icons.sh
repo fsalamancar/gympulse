@@ -35,4 +35,13 @@ mv "$OUT/s_2.png" "$OUT/busy.png"
 mv "$OUT/s_4.png" "$OUT/nodata.png"
 mv "$OUT/s_5.png" "$OUT/error.png"
 rm -f "$OUT/s_3.png"   # spare red
-echo "Built: $OUT/{quiet,moderate,busy,nodata,error}.png"
+
+# 5) Monochrome menu-bar glyphs (black content + alpha). macOS renders template
+#    images adapting to light/dark, so these match the system menu-bar icons.
+#    Smaller (32px @144dpi = 16pt). template = clean dumbbell, template_error = cracked.
+magick "$OUT/busy.png"  -channel RGB -evaluate set 0 +channel \
+  -resize x32 -units PixelsPerInch -density 144 "$OUT/template.png"
+magick "$OUT/error.png" -channel RGB -evaluate set 0 +channel \
+  -resize x32 -units PixelsPerInch -density 144 "$OUT/template_error.png"
+
+echo "Built: $OUT/{quiet,moderate,busy,nodata,error}.png + template{,_error}.png (monochrome, 16pt)"
