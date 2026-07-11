@@ -25,6 +25,12 @@ MAPS_URL = "https://www.google.com/maps/search/?api=1&query=" + quote_plus(GYM_A
 QUIET = 33      # <= QUIET  -> quiet (green)
 MODERATE = 66   # <= MODERATE -> moderate (amber); above -> busy (red)
 
+# --- Your availability: hours you'd realistically START a workout ---
+# "Best time to go" only recommends hours in [GO_START, GO_END). 7..22 means
+# 7:00 a.m. through a 10:00 p.m. start (you're done by ~11 p.m.).
+GO_START = 7
+GO_END = 23
+
 # --- Your gym's weekly busyness, 0-100 per hour, index 0..23 = hour of day ---
 # This IS the data source (Google/paid APIs don't offer this for free). Edit each
 # day to match your gym: 0 = empty, 100 = packed. You go there — you know the rhythm.

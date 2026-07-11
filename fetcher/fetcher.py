@@ -85,6 +85,7 @@ def fetch() -> dict:
             "today": [0] * 24,
             "best_windows": [],
             "next_quiet": None,
+            "go_at": None,
             "week": {},
             "maps_url": config.MAPS_URL,
             "ok": False,

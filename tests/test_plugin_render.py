@@ -14,6 +14,7 @@ def _payload(**over):
     base = {"live": 28, "typical_now": 45, "delta": -17, "verdict": "quieter",
             "level": "quiet", "today": [0]*16 + [52, 74, 88] + [40]*5,
             "best_windows": ["10:00-14:00"], "next_quiet": "21:00",
+            "go_at": {"day": "today", "hour": 21, "pct": 24},
             "fetched_at": "2026-07-10T18:12:00-05:00", "ok": True, "error": None}
     base.update(over)
     return base
@@ -37,6 +38,18 @@ def test_dropdown_shows_summary_histogram_and_actions():
     assert "href=" in out
     # the old verbose hour-by-hour text list is gone
     assert "  06:00" not in out and "  18:00" not in out
+
+
+def test_dropdown_shows_best_time_to_go():
+    out = plugin.render(_payload(), ICONS, cache_age_min=2.0)
+    assert "Best time to go: 9 p.m. today (~24%)" in out
+    # tomorrow + morning formatting
+    out2 = plugin.render(_payload(go_at={"day": "tomorrow", "hour": 8, "pct": 15}),
+                         ICONS, cache_age_min=2.0)
+    assert "Best time to go: 8 a.m. tomorrow (~15%)" in out2
+    # absent go_at -> no crash, line simply omitted
+    out3 = plugin.render(_payload(go_at=None), ICONS, cache_age_min=2.0)
+    assert "Best time to go" not in out3
 
 
 def test_gauge_stem_fills_with_busyness():

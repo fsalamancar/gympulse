@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fetcher.config import MODERATE, QUIET
+from datetime import timedelta
+
+from fetcher.config import GO_END, GO_START, MODERATE, QUIET
 
 _DAY_START, _DAY_END = 6, 22  # hours considered for "best windows"
 
@@ -53,6 +55,34 @@ def find_next_quiet(data: list[int], now_hour: int) -> str | None:
     return None
 
 
+def _least_busy(data: list[int], first_hour: int) -> tuple[int, int] | None:
+    """(hour, pct) of the least busy open hour in [first_hour, GO_END); ties -> earliest."""
+    candidates = [(data[h], h) for h in range(max(first_hour, GO_START), GO_END)
+                  if data[h] > 0]  # 0 = closed/no data, not a recommendation
+    if not candidates:
+        return None
+    pct, hour = min(candidates)
+    return hour, pct
+
+
+def best_go_time(today: list[int], week: dict[str, list[int]],
+                 now: datetime) -> dict | None:
+    """Recommend when to hit the gym within the user's schedule (GO_START..GO_END).
+
+    Picks the least busy upcoming hour today; if the schedulable day is over,
+    falls to tomorrow's least busy hour from the weekly curve."""
+    pick = _least_busy(today, now.hour + 1)
+    if pick is not None:
+        return {"day": "today", "hour": pick[0], "pct": pick[1]}
+    tomorrow_name = (now + timedelta(days=1)).strftime("%A")
+    tomorrow = week.get(tomorrow_name)
+    if tomorrow:
+        pick = _least_busy(tomorrow, GO_START)
+        if pick is not None:
+            return {"day": "tomorrow", "hour": pick[0], "pct": pick[1]}
+    return None
+
+
 def build_payload(
     populartimes: list[dict], live: int | None, now: datetime
 ) -> dict:
@@ -88,5 +118,6 @@ def build_payload(
         "today": today,
         "best_windows": find_best_windows(today),
         "next_quiet": find_next_quiet(today, now.hour),
+        "go_at": best_go_time(today, week, now),
         "week": week,
     }

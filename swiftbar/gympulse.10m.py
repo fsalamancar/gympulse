@@ -92,9 +92,12 @@ def render(payload: dict, icons_dir: Path, cache_age_min: float) -> str:
         today = payload.get("today") or []
         spark = "".join(_bar(v) for v in today)
         lines.append(f"{spark} | font=Menlo size=13")
-    nq = payload.get("next_quiet")
-    if nq:
-        lines.append(f"Next quiet window: {nq}")
+    go = payload.get("go_at")
+    if go:
+        h = go["hour"]
+        when = f"{((h - 1) % 12) + 1} {'a.m.' if h < 12 else 'p.m.'}"
+        day = "today" if go.get("day") == "today" else "tomorrow"
+        lines.append(f"Best time to go: {when} {day} (~{go['pct']}%)")
     lines.append("---")
 
     # --- Actions ---

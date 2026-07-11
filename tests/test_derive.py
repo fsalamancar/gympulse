@@ -52,6 +52,50 @@ def test_find_next_quiet_none_left_today():
     assert derive.find_next_quiet(data, now_hour=18) is None
 
 
+def test_best_go_time_picks_least_busy_upcoming_hour_in_schedule():
+    # now=9am Friday; quietest remaining schedulable hour (7..22) is 14:00 (20%)
+    today = [50]*24
+    today[14] = 20
+    today[3] = 1          # quieter, but outside the 7-23 schedule -> ignored
+    week = {"Friday": today, "Saturday": [40]*24}
+    now = datetime(2026, 7, 10, 9, 0, tzinfo=TZ)  # Friday 9am
+    g = derive.best_go_time(today, week, now)
+    assert g == {"day": "today", "hour": 14, "pct": 20}
+
+
+def test_best_go_time_tie_prefers_earliest_hour():
+    today = [50]*24
+    today[10] = 30
+    today[20] = 30
+    week = {"Friday": today}
+    now = datetime(2026, 7, 10, 8, 0, tzinfo=TZ)
+    assert derive.best_go_time(today, week, now)["hour"] == 10
+
+
+def test_best_go_time_rolls_to_tomorrow_when_day_is_over():
+    today = [50]*24
+    tomorrow = [60]*24
+    tomorrow[8] = 15      # tomorrow's quietest schedulable hour
+    week = {"Friday": today, "Saturday": tomorrow}
+    now = datetime(2026, 7, 10, 22, 30, tzinfo=TZ)  # Friday 10:30pm -> nothing left
+    g = derive.best_go_time(today, week, now)
+    assert g == {"day": "tomorrow", "hour": 8, "pct": 15}
+
+
+def test_best_go_time_none_when_no_data_at_all():
+    now = datetime(2026, 7, 10, 22, 30, tzinfo=TZ)
+    assert derive.best_go_time([0]*24, {}, now) is None
+
+
+def test_build_payload_includes_go_at():
+    now = datetime(2026, 7, 10, 9, 0, tzinfo=TZ)  # Friday
+    week = [30]*24
+    week[15] = 10
+    populartimes = [{"name": "Friday", "data": week}]
+    p = derive.build_payload(populartimes, live=None, now=now)
+    assert p["go_at"] == {"day": "today", "hour": 15, "pct": 10}
+
+
 def test_build_payload_with_live():
     now = datetime(2026, 7, 10, 18, 0, tzinfo=TZ)  # Friday, hour 18
     week = [90]*24
