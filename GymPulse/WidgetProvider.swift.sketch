@@ -1,0 +1,44 @@
+// SKETCH ONLY — paste into a WidgetKit extension once the Xcode target exists.
+// Reads the App Group JSON that fetcher.py writes to:
+//   ~/Library/Group Containers/group.dev.francisco.gympulse/latest.json
+import WidgetKit
+import SwiftUI
+
+struct GymEntry: TimelineEntry {
+    let date: Date
+    let live: Int?
+    let level: String
+    let verdict: String
+    let today: [Int]
+    let nextQuiet: String?
+}
+
+struct Provider: TimelineProvider {
+    func placeholder(in _: Context) -> GymEntry {
+        GymEntry(date: .now, live: 28, level: "quiet", verdict: "quieter",
+                 today: Array(repeating: 40, count: 24), nextQuiet: "21:00")
+    }
+    func getSnapshot(in _: Context, completion: @escaping (GymEntry) -> Void) {
+        completion(load())
+    }
+    func getTimeline(in _: Context, completion: @escaping (Timeline<GymEntry>) -> Void) {
+        let entry = load()
+        completion(Timeline(entries: [entry], policy: .after(.now.addingTimeInterval(900))))
+    }
+    private func load() -> GymEntry {
+        let url = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: "group.dev.francisco.gympulse")!
+            .appendingPathComponent("latest.json")
+        guard let data = try? Data(contentsOf: url),
+              let j = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return placeholder(in: NullContext()) }
+        return GymEntry(
+            date: .now,
+            live: j["live"] as? Int,
+            level: j["level"] as? String ?? "error",
+            verdict: j["verdict"] as? String ?? "usual",
+            today: j["today"] as? [Int] ?? [],
+            nextQuiet: j["next_quiet"] as? String
+        )
+    }
+}
