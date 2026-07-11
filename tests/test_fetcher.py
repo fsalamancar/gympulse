@@ -65,10 +65,11 @@ def test_fetch_success_from_forecast(monkeypatch):
     assert payload["maps_url"] == fetcher.config.MAPS_URL  # gym-specific link travels in JSON
 
 
-def test_fetch_prefers_live_when_available(monkeypatch):
+def test_fetch_prefers_live_when_available(tmp_path, monkeypatch):
     # When the live scrape succeeds, the payload is source=live with the scraped
     # curve + live value; no Chrome is launched here (scrape_live is stubbed).
     monkeypatch.setattr(fetcher.config, "USE_LIVE_SCRAPE", True)
+    monkeypatch.setattr(fetcher.config, "CACHE_DIR", tmp_path)  # real captcha marker must not leak in
     fake_today = [10] * 24
     fake_today[18] = 80
     def fake_scrape(query, tz):
