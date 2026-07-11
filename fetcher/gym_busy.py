@@ -34,7 +34,7 @@ def _show_day(name: str, data: list[int], now_hour: int | None, live: int | None
 
 
 def main() -> None:
-    print(f"Fetching popular times for:\n  {config.GYM_NAME}\n")
+    print(f"Fetching popular times for:\n  {config.PLACE_NAME}\n")
     p = fetch()
     if not p["ok"]:
         sys.exit(f"Could not fetch data ({p['error']}).")

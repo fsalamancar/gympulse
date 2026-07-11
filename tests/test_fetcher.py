@@ -1,5 +1,6 @@
 # tests/test_fetcher.py
 import json
+from datetime import datetime
 
 import pytest
 
@@ -104,3 +105,44 @@ def test_append_history(tmp_path, monkeypatch):
     lines = csv_path.read_text().strip().splitlines()
     assert lines[0] == "fetched_at,live,typical_now"   # header once
     assert len(lines) == 3
+
+
+def test_captcha_triggers_cooldown_and_skips_next_scrape(tmp_path, monkeypatch):
+    """After a Google captcha, the daemon must back off instead of hammering."""
+    import scrape.live as live_mod
+
+    monkeypatch.setattr(fetcher.config, "USE_LIVE_SCRAPE", True)
+    monkeypatch.setattr(fetcher.config, "CACHE_DIR", tmp_path)
+    calls = []
+
+    def captcha_scrape(query, tz):
+        calls.append(query)
+        return {"ok": False, "error": "google captcha (rate-limited)"}
+
+    monkeypatch.setattr(live_mod, "scrape_live", captcha_scrape)
+    now = datetime.now(fetcher.config.TZ)
+    assert fetcher._try_live(now) is None
+    assert (tmp_path / "captcha_cooldown").exists()
+    assert fetcher._try_live(now) is None
+    assert len(calls) == 1  # second attempt skipped during cooldown
+
+
+def test_successful_scrape_clears_cooldown(tmp_path, monkeypatch):
+    import scrape.live as live_mod
+
+    monkeypatch.setattr(fetcher.config, "USE_LIVE_SCRAPE", True)
+    monkeypatch.setattr(fetcher.config, "CACHE_DIR", tmp_path)
+    marker = tmp_path / "captcha_cooldown"
+    marker.touch()
+    import os
+    import time
+    old = time.time() - 10 * 3600  # stale marker: cooldown already expired
+    os.utime(marker, (old, old))
+
+    def good_scrape(query, tz):
+        return {"ok": True, "today": [50] * 24, "live": 70, "verdict": "busier"}
+
+    monkeypatch.setattr(live_mod, "scrape_live", good_scrape)
+    payload = fetcher._try_live(datetime.now(fetcher.config.TZ))
+    assert payload is not None and payload["source"] == "live"
+    assert not marker.exists()

@@ -46,3 +46,22 @@ def test_render_rejects_bad_input(tmp_path):
     assert histogram.render([], now_hour=0, out_path=out) is False
     assert histogram.render([10, 20, 30], now_hour=0, out_path=out) is False  # not 24
     assert not out.exists()
+
+
+def test_find_magick_falls_back_to_homebrew_path(monkeypatch, tmp_path):
+    """launchd runs with a bare PATH; render must still find the magick binary."""
+    from fetcher import histogram
+
+    fake = tmp_path / "magick"
+    fake.write_text("#!/bin/sh\n")
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+    monkeypatch.setattr(histogram, "_MAGICK_FALLBACKS", [str(fake)])
+    assert histogram._find_magick() == str(fake)
+
+
+def test_find_magick_returns_none_when_absent(monkeypatch):
+    from fetcher import histogram
+
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+    monkeypatch.setattr(histogram, "_MAGICK_FALLBACKS", ["/nonexistent/magick"])
+    assert histogram._find_magick() is None

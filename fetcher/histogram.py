@@ -12,6 +12,25 @@ import shutil
 import subprocess
 from pathlib import Path
 
+# launchd runs daemons with PATH=/usr/bin:/bin:… — Homebrew is not on it, so
+# shutil.which("magick") fails under the LaunchAgent even when ImageMagick is
+# installed. Fall back to the standard install locations.
+_MAGICK_FALLBACKS = [
+    "/opt/homebrew/bin/magick",   # Apple Silicon Homebrew
+    "/usr/local/bin/magick",      # Intel Homebrew
+]
+
+
+def _find_magick() -> str | None:
+    found = shutil.which("magick")
+    if found:
+        return found
+    for p in _MAGICK_FALLBACKS:
+        if Path(p).exists():
+            return p
+    return None
+
+
 # A real font FILE (ImageMagick can't resolve font names on some boxes). First that
 # exists wins; if none, all text is skipped (bars still render).
 _FONT_CANDIDATES = [
@@ -120,7 +139,7 @@ def render(today: list[int], now_hour: int, out_path: Path,
 
     If `live` is given, the current hour shows two bars (teal typical + red live)
     plus the LIVE badge and verdict text, mirroring Google's widget."""
-    magick = shutil.which("magick")
+    magick = _find_magick()
     if not magick or not today or len(today) < 24:
         return False
     try:

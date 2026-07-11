@@ -1,6 +1,9 @@
-"""Single source of truth for GymPulse. Swap gyms by editing GYM_ADDRESS + GYM_NAME.
+"""Single source of truth for GymPulse. Point it at ANY place Google tracks.
 
-Tune busyness by editing WEEKLY_CURVE to match how your gym actually feels.
+Works for any venue with a Google "Popular times" panel — gyms, cafés,
+supermarkets, libraries, climbing walls. Edit the PLACE_* values below and
+re-run ./install.sh. Tune WEEKLY_CURVE to match how the place actually feels
+(it's the fallback forecast when live data is unavailable).
 """
 from __future__ import annotations
 
@@ -8,24 +11,28 @@ from pathlib import Path
 from urllib.parse import quote_plus
 from zoneinfo import ZoneInfo
 
-# --- Swap gym here (address is used only for the "Open in Google Maps" link) ---
-GYM_ADDRESS = "Fitness24Seven, Calle 24, Av. La Esperanza #43 A 90, Teusaquillo, Bogota"
-GYM_NAME = "Fitness24Seven Quinta Paredes"
+# --- Your place (any venue with Popular Times on Google) ---
+# PLACE_SEARCH_QUERY: what you'd type into Google to find it (name + city works).
+# PLACE_ADDRESS is used only for the "Open in Google Maps" link.
+PLACE_NAME = "Fitness24Seven Quinta Paredes"
+PLACE_SEARCH_QUERY = "Fitness24Seven Quinta Paredes Bogota"
+PLACE_ADDRESS = "Fitness24Seven, Calle 24, Av. La Esperanza #43 A 90, Teusaquillo, Bogota"
 
 # --- Live data (optional): scrape Google's Popular Times via your real Chrome. ---
-# When True, fetcher tries the live scrape first and falls back to WEEKLY_CURVE if it
-# fails. Needs Google Chrome installed + a one-time login (see scrape/README.md).
-# GYM_SEARCH_QUERY is what gets typed into Google — the name Google knows the gym by.
+# When True, fetcher tries the live scrape first and falls back to WEEKLY_CURVE if
+# it fails. Needs Google Chrome installed (see scrape/README.md).
 USE_LIVE_SCRAPE = True
-GYM_SEARCH_QUERY = "Fitness24Seven Quinta Paredes Bogota"
-# quote_plus so special chars (e.g. the '#' in the address) don't break the URL.
-MAPS_URL = "https://www.google.com/maps/search/?api=1&query=" + quote_plus(GYM_ADDRESS)
+# After Google serves a captcha (rate-limit), skip live scrapes for this many
+# minutes so the block clears; the forecast fills in meanwhile.
+CAPTCHA_COOLDOWN_MIN = 120
+# quote_plus so special chars (e.g. a '#' in the address) don't break the URL.
+MAPS_URL = "https://www.google.com/maps/search/?api=1&query=" + quote_plus(PLACE_ADDRESS)
 
 # --- Thresholds (percent full) ---
 QUIET = 33      # <= QUIET  -> quiet (green)
 MODERATE = 66   # <= MODERATE -> moderate (amber); above -> busy (red)
 
-# --- Your availability: hours you'd realistically START a workout ---
+# --- Your availability: hours you would realistically GO ---
 # "Best time to go" only recommends hours in [GO_START, GO_END). 7..22 means
 # 7:00 a.m. through a 10:00 p.m. start (you're done by ~11 p.m.).
 GO_START = 7

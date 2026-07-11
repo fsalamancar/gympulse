@@ -4,4 +4,4 @@ __pycache__/
 .superpowers/
 gympulse.egg-info/
 .gympulse-daemon.log
-.claude/scheduled_tasks.lock
+.claude/

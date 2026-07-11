@@ -31,17 +31,42 @@ def _week_from_forecast() -> list[dict]:
     return week
 
 
+def _cooldown_marker():
+    return config.CACHE_DIR / "captcha_cooldown"
+
+
+def _in_captcha_cooldown() -> bool:
+    """True while a recent Google captcha means further scrapes would only
+    prolong the rate-limit. Falls back to forecast during the cooldown."""
+    marker = _cooldown_marker()
+    try:
+        age_min = (datetime.now().timestamp() - marker.stat().st_mtime) / 60
+    except OSError:
+        return False
+    return age_min < getattr(config, "CAPTCHA_COOLDOWN_MIN", 120)
+
+
 def _try_live(now: datetime) -> dict | None:
     """Best-effort live scrape via real Chrome. Returns a payload or None (fall back)."""
     if not getattr(config, "USE_LIVE_SCRAPE", False):
+        return None
+    if _in_captcha_cooldown():
         return None
     try:
         from scrape.live import scrape_live
     except Exception:
         return None
-    r = scrape_live(config.GYM_SEARCH_QUERY, config.TZ)
+    r = scrape_live(config.PLACE_SEARCH_QUERY, config.TZ)
+    if "captcha" in (r.get("error") or ""):
+        try:
+            config.CACHE_DIR.mkdir(parents=True, exist_ok=True)
+            _cooldown_marker().touch()
+        except OSError:
+            pass
+        return None
     if not r.get("ok") or not r.get("today"):
         return None
+    _cooldown_marker().unlink(missing_ok=True)
     today_name = now.strftime("%A")
     # today's curve comes from Google; other days keep the forecast for the week view
     week = _week_from_forecast()
