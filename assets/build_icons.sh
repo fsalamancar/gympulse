@@ -20,9 +20,12 @@ for f in "$OUT"/s_*.png; do
     -shave 1x1 -trim +repage "$f"
 done
 
-# 3) Resize for a retina menu bar (~36px tall @2x), keep pixels crisp, 2:1 dumbbell.
+# 3) Size for the menu bar. We keep 36 physical px of detail but tag the PNG at
+#    144 DPI (2x) so macOS/SwiftBar renders it at 18pt tall — crisp on retina AND
+#    the right size next to the ~18pt system menu-bar icons (not the huge ~36pt
+#    a 72-DPI 36px image would be). Smooth filter downscales the hi-res tile cleanly.
 for f in "$OUT"/s_*.png; do
-  magick "$f" -filter point -resize x36 "$f"
+  magick "$f" -resize x36 -units PixelsPerInch -density 144 "$f"
 done
 
 # 4) Name by state (top row: green/amber/red ; bottom row: red-alt/grey/cracked).
