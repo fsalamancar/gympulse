@@ -15,30 +15,30 @@ def test_write_json_atomic_and_readable(tmp_path, monkeypatch):
     assert (tmp_path / "grp" / "latest.json").exists()
 
 
-def test_fetch_failure_is_soft(monkeypatch):
-    def boom(_addr):
-        raise RuntimeError("google changed markup")
-    monkeypatch.setattr(fetcher.livepopulartimes, "get_populartimes_by_address", boom)
+def test_fetch_malformed_curve_is_soft(monkeypatch):
+    # A hand-edited curve with the wrong length must fail soft, not crash.
+    bad = dict(fetcher.config.WEEKLY_CURVE)
+    bad["Monday"] = [10, 20, 30]  # not 24 values
+    monkeypatch.setattr(fetcher.config, "WEEKLY_CURVE", bad)
     payload = fetcher.fetch()
     assert payload["ok"] is False
-    assert "google changed markup" in payload["error"]
+    assert "24 hourly values" in payload["error"]
     assert payload["level"] == "error"
     assert "fetched_at" in payload
 
 
-def test_fetch_success(monkeypatch):
-    week = [10]*24
-    fake = {"populartimes": [{"name": d, "data": week}
-            for d in ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]],
-            "current_popularity": 20}
-    monkeypatch.setattr(
-        fetcher.livepopulartimes, "get_populartimes_by_address", lambda _a: fake
-    )
+def test_fetch_success_from_forecast(monkeypatch):
+    # Every day quiet -> forecast-driven payload, live is None, source is forecast.
+    week = {d: [10]*24 for d in
+            ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]}
+    monkeypatch.setattr(fetcher.config, "WEEKLY_CURVE", week)
     payload = fetcher.fetch()
     assert payload["ok"] is True
     assert payload["error"] is None
-    assert payload["live"] == 20
-    assert payload["level"] == "quiet"
+    assert payload["live"] is None
+    assert payload["source"] == "forecast"
+    assert payload["level"] == "quiet"   # forecast value 10 -> quiet (green)
+    assert len(payload["today"]) == 24
 
 
 def test_append_history(tmp_path, monkeypatch):

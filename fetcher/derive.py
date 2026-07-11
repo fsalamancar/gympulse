@@ -64,11 +64,16 @@ def build_payload(
     typical_now = today[now.hour]
 
     if live is not None:
+        # A real live measurement: it drives the color and the "vs usual" verdict.
+        source = "live"
         level = classify(live)
         verdict = compute_verdict(live, typical_now)
         delta = live - typical_now
     else:
-        level = "nodata"
+        # No live signal: the forecast for this hour IS our estimate and drives
+        # the color. "nodata" grey is reserved for genuinely-missing forecast.
+        source = "forecast"
+        level = classify(typical_now) if typical_now is not None else "nodata"
         verdict = "usual"
         delta = 0
 
@@ -79,6 +84,7 @@ def build_payload(
         "delta": delta,
         "verdict": verdict,
         "level": level,
+        "source": source,
         "today": today,
         "best_windows": find_best_windows(today),
         "next_quiet": find_next_quiet(today, now.hour),

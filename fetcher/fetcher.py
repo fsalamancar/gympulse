@@ -1,6 +1,7 @@
-"""Scrape Google Popular Times, compute derived fields, write latest.json.
+"""Build latest.json from the self-tuned weekly forecast in config.WEEKLY_CURVE.
 
-All fragile scraping is isolated here. Run: python -m fetcher.fetcher
+No network, no dependencies (stdlib only). The forecast for the current hour is
+the busyness estimate. Run: python -m fetcher.fetcher
 """
 from __future__ import annotations
 
@@ -9,8 +10,6 @@ import json
 import os
 import tempfile
 from datetime import datetime
-
-import livepopulartimes
 
 from fetcher import config
 from fetcher.derive import build_payload
@@ -21,17 +20,22 @@ def _stamp() -> str:
 
 
 def fetch() -> dict:
-    """Scrape and build a full payload. Never raises — failures come back soft."""
+    """Build a full payload from the forecast. Never raises — failures come back soft."""
     try:
-        data = livepopulartimes.get_populartimes_by_address(config.GYM_ADDRESS)
-        populartimes = data.get("populartimes")
-        if not populartimes:
-            raise RuntimeError("no popular-times data published for this venue")
-        live = data.get("current_popularity")
-        payload = build_payload(populartimes, live, datetime.now(config.TZ))
+        populartimes = [
+            {"name": day, "data": config.WEEKLY_CURVE[day]}
+            for day in (
+                "Monday", "Tuesday", "Wednesday", "Thursday",
+                "Friday", "Saturday", "Sunday",
+            )
+        ]
+        for entry in populartimes:  # guard against a hand-edited malformed curve
+            if len(entry["data"]) != 24:
+                raise ValueError(f"WEEKLY_CURVE['{entry['name']}'] must have 24 hourly values")
+        payload = build_payload(populartimes, live=None, now=datetime.now(config.TZ))
         payload.update(fetched_at=_stamp(), ok=True, error=None)
         return payload
-    except Exception as e:  # scraper is fragile by nature
+    except Exception as e:  # e.g. a malformed WEEKLY_CURVE
         return {
             "fetched_at": _stamp(),
             "live": None,
@@ -39,6 +43,7 @@ def fetch() -> dict:
             "delta": 0,
             "verdict": "usual",
             "level": "error",
+            "source": "forecast",
             "today": [0] * 24,
             "best_windows": [],
             "next_quiet": None,

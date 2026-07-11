@@ -54,15 +54,29 @@ def test_build_payload_with_live():
     assert p["delta"] == -27
     assert p["verdict"] == "quieter"
     assert p["level"] == "moderate"      # 61 -> moderate
+    assert p["source"] == "live"
     assert p["today"] == week
     assert p["week"]["Friday"] == week
 
 
-def test_build_payload_no_live_is_nodata():
-    now = datetime(2026, 7, 10, 3, 0, tzinfo=TZ)  # Friday, hour 3
+def test_build_payload_forecast_colors_by_current_hour():
+    # No live signal -> the forecast for this hour drives the level (not "nodata").
+    now = datetime(2026, 7, 10, 18, 0, tzinfo=TZ)  # Friday, hour 18
     week = [10]*24
+    week[18] = 88   # busy forecast at 18:00
     populartimes = [{"name": "Friday", "data": week}]
     p = derive.build_payload(populartimes, live=None, now=now)
     assert p["live"] is None
-    assert p["level"] == "nodata"
-    assert p["typical_now"] == 10
+    assert p["source"] == "forecast"
+    assert p["typical_now"] == 88
+    assert p["level"] == "busy"          # 88 -> busy, colored by forecast
+    assert p["delta"] == 0
+
+
+def test_build_payload_forecast_quiet_hour_is_green():
+    now = datetime(2026, 7, 10, 3, 0, tzinfo=TZ)  # Friday, hour 3 (overnight)
+    week = [10]*24
+    populartimes = [{"name": "Friday", "data": week}]
+    p = derive.build_payload(populartimes, live=None, now=now)
+    assert p["level"] == "quiet"         # 10 -> quiet (green), not grey
+    assert p["source"] == "forecast"
